@@ -30,9 +30,7 @@ namespace lizzie
             var binder = new Binder<Nothing>();
             BindFunctions(binder);
             var nothing = new Nothing();
-            return new Func<object>(() => {
-                return function(nothing, binder);
-            });
+            return new Func<object>(() => function(nothing, binder));
         }
 
         /// <summary>
@@ -53,9 +51,7 @@ namespace lizzie
             var function = Compiler.Compile<TContext>(tokenizer, code);
             var binder = new Binder<TContext>(bindDeep ? context : default(TContext));
             BindFunctions(binder);
-            return new Func<object>(() => {
-                return function(context, binder);
-            });
+            return new Func<object>(() => function(context, binder));
         }
 
         /// <summary>
@@ -80,9 +76,7 @@ namespace lizzie
         {
             var tokenizer = new Tokenizer(new LizzieTokenizer());
             var function = Compiler.Compile<TContext>(tokenizer, code);
-            return new Func<object>(() => {
-                return function(context, binder);
-            });
+            return new Func<object>(() => function(context, binder));
         }
 
         /// <summary>
@@ -98,49 +92,77 @@ namespace lizzie
 
             // Comparison functions.
             binder["if"] = Functions<TContext>.If;
+            binder["se"] = Functions<TContext>.If;
             binder["eq"] = Functions<TContext>.Eq;
+            binder["igual"] = Functions<TContext>.Eq;
             binder["mt"] = Functions<TContext>.Mt;
+            binder["maiorQ"] = Functions<TContext>.Mt;
             binder["lt"] = Functions<TContext>.Lt;
+            binder["menorQ"] = Functions<TContext>.Lt;
             binder["mte"] = Functions<TContext>.Mte;
+            binder["maiorOig"] = Functions<TContext>.Mte;
             binder["lte"] = Functions<TContext>.Lte;
+            binder["menorOig"] = Functions<TContext>.Lte;
             binder["not"] = Functions<TContext>.Not;
+            binder["nao"] = Functions<TContext>.Not;
 
             // Boolean algebraic functions.
             binder["any"] = Functions<TContext>.Any;
+            binder["qualquer"] = Functions<TContext>.Any;
             binder["all"] = Functions<TContext>.All;
-
+            binder["todos"] = Functions<TContext>.All;
             // Function functions.
             binder["function"] = Functions<TContext>.Function;
+            binder["funcao"] = Functions<TContext>.Function;
             binder["apply"] = Functions<TContext>.Apply;
 
             // List functions,
             binder["list"] = Functions<TContext>.List;
+            binder["lista"] = Functions<TContext>.List;
             binder["slice"] = Functions<TContext>.Slice;
 
             // Map functions,
             binder["map"] = Functions<TContext>.Map;
+            binder["mapa"] = Functions<TContext>.Map;
 
             // Common functions for map and list.
             binder["get"] = Functions<TContext>.Get;
+            binder["pega"] = Functions<TContext>.Get;
             binder["count"] = Functions<TContext>.Count;
+            binder["conta"] = Functions<TContext>.Count;
             binder["add"] = Functions<TContext>.AddValue;
             binder["each"] = Functions<TContext>.Each;
+            binder["cada"] = Functions<TContext>.Each;
 
             // Conversion functions.
             binder["string"] = Functions<TContext>.String;
+            binder["literal"] = Functions<TContext>.String;
             binder["number"] = Functions<TContext>.Number;
+            binder["numero"] = Functions<TContext>.Number;
             binder["json"] = Functions<TContext>.Json;
 
             // Math functions.
-            binder["+"] = Functions<TContext>.Add;
-            binder["-"] = Functions<TContext>.Subtract;
-            binder["*"] = Functions<TContext>.Multiply;
-            binder["/"] = Functions<TContext>.Divide;
-            binder["%"] = Functions<TContext>.Modulo;
 
+            binder["+"] = Functions<TContext>.Add;
+            binder["soma"] = Functions<TContext>.Add;
+            binder["-"] = Functions<TContext>.Subtract;
+            binder["subtrai"] = Functions<TContext>.Subtract;
+            binder["*"] = Functions<TContext>.Multiply;
+            binder["multiplica"] = Functions<TContext>.Multiply;
+            binder["/"] = Functions<TContext>.Divide;
+            binder["divide"] = Functions<TContext>.Divide;
+            binder["%"] = Functions<TContext>.Modulo;
+            binder["modulo"] = Functions<TContext>.Modulo;
+
+
+            // other 
+
+            binder["write"] = Functions<TContext>.Write;
+            binder["escreva"] = Functions<TContext>.Write;
             // String functions.
             binder["substr"] = Functions<TContext>.Substr;
             binder["length"] = Functions<TContext>.Length;
+            binder["tamanho"] = Functions<TContext>.Length;
             binder["replace"] = Functions<TContext>.Replace;
 
             // The eval function.
@@ -148,6 +170,7 @@ namespace lizzie
 
             // Null is simply a constant yielding null.
             binder["null"] = null;
+            binder["nulo"] = null;
         }
 
         /// <summary>

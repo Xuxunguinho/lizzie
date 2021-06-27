@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
+using System.ComponentModel;
 using lizzie.exceptions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -124,6 +125,23 @@ namespace lizzie
             // Returning the result of the operation to caller.
             return result;
         });
+        public static Function<TContext> Write => new Function<TContext>((ctx, binder, arguments) =>
+        {
+            // Sanity checking code.
+            if (arguments.Count > 1)
+                throw new LizzieRuntimeException("The 'add' keyword requires at least 2 arguments, and you tried to invoke it with fewer.");
+
+            // Retrieving the first value, making sure we retrieve it as a "dynamic type".
+            dynamic result = arguments.Get(0);
+            if(result is null)
+                Console.WriteLine("the argument return null value");
+            else
+            {
+                Console.WriteLine(result.ToString());
+            }
+            // Returning the result of the operation to caller.
+            return result;
+        });
 
         /// <summary>
         /// Subtracts a bunch of things from the first thing provided. Can be used
@@ -235,8 +253,7 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'function' keyword requires at least 1 argument, and you tried to invoke it with fewer.");
 
             // Retrieving lambda of function and doing some basic sanity checks.
-            var lambda = arguments.Get(0) as Function<TContext>;
-            if (lambda == null)
+            if (!(arguments.Get(0) is Function<TContext> lambda))
                 throw new LizzieRuntimeException("When declaring a function, the first argument must be a lambda object, e.g. '{ ... some code ... }'.");
 
             // Retrieving argument declarations and sanity checking them.
@@ -299,6 +316,82 @@ namespace lizzie
             });
         });
 
+        public static Function<TContext> uFunction => new Function<TContext>((ctx, binder, arguments) =>
+        {
+            // Sanity checking code.
+            if (arguments.Count == 0)
+                throw new LizzieRuntimeException("The 'function' keyword requires at least 1 argument, and you tried to invoke it with fewer.");
+
+            // Retrieving lambda of function and doing some basic sanity checks.
+            if (!(arguments.Get(0) is Function<TContext> lambda))
+                throw new LizzieRuntimeException("When declaring a function, the first argument must be a lambda object, e.g. '{ ... some code ... }'.");
+
+            // Retrieving argument declarations and sanity checking them.
+            var formallyDeclaredArguments = arguments.Skip(1).Select(ix => ix as string).ToList();
+            foreach (var ix in formallyDeclaredArguments)
+            {
+                if (ix is string ixStr)
+                    Compiler.SanityCheckSymbolName(ixStr);
+                else
+                    throw new LizzieRuntimeException("When declaring a function, all argument declarations must be valid symbols, e.g. '@foo'.");
+            }
+
+            /*
+             * Returning function to caller.
+             *
+             * NOTICE!
+             * A function always pushes the stack.
+             */
+            return new Function<TContext>((invocationContext, invocationBinder, invocationArguments) => {
+
+                /*
+                 * Sanity checking that caller did not supply more arguments than
+                 * the function is declared to at maximum being able to handle.
+                 */
+                if (invocationArguments.Count > formallyDeclaredArguments.Count)
+                    throw new LizzieRuntimeException("Function was invoked with too many arguments.");
+
+                // Pushing stack, making sure we can correctly pop it once we're done.
+                invocationBinder.PushStack();
+                try
+                {
+
+                    /*
+                     * Binding all argument declarations for our lambda to whatever
+                     * the caller provided as values during invocation.
+                     */
+                    for (var ix = 0; ix < invocationArguments.Count; ix++)
+                    {
+                        invocationBinder[formallyDeclaredArguments[ix]] = invocationArguments.Get(ix);
+                    }
+
+                    /*
+                     * Applying the rest of our arguments as null values.
+                     *
+                     * NOTICE!
+                     * This allows us to create functions without forcing the caller
+                     * of those functions to supply all arguments that the function
+                     * declares, simply setting the rest of the declared arguments
+                     * to "null" values.
+                     */
+                    for (var ix = invocationArguments.Count; ix < formallyDeclaredArguments.Count; ix++)
+                    {
+                        invocationBinder[formallyDeclaredArguments[ix]] = null;
+                    }
+
+                    // Evaluating function.
+                    return lambda(invocationContext, invocationBinder, invocationArguments);
+
+                }
+                finally
+                {
+
+                    // Popping stack.
+                    invocationBinder.PopStack();
+                }
+            });
+        });
+
         /// <summary>
         /// Converts a 'list' into an arguments collection, allowing you to explicitly
         /// apply a bunch of arguments dynamically during runtime. Can only be
@@ -349,23 +442,18 @@ namespace lizzie
             var condition = arguments.Get(0);
             if (condition != null)
             {
-                var lambdaIf = arguments.Get(1) as Function<TContext>;
-                if (lambdaIf == null)
+                if (!(arguments.Get(1) is Function<TContext> lambdaIf))
                     throw new LizzieRuntimeException("The 'if' keyword requires a lambda argument as its second argument.");
                 return lambdaIf(ctx, binder, arguments);
             }
 
             // Execute the else-clause, if one is present:
-            if (arguments.Count > 2)
-            {
-                var lambdaElse = arguments.Get(2) as Function<TContext>;
-                if (lambdaElse == null)
-                    throw new LizzieRuntimeException("The 'if' keyword requires a lambda argument as its third (else) argument if you supply a third argument.");
-                return lambdaElse(ctx, binder, arguments);
-            }
+            if (arguments.Count <= 2) return null;
+            if (!(arguments.Get(2) is Function<TContext> lambdaElse))
+                throw new LizzieRuntimeException("The 'if' keyword requires a lambda argument as its third (else) argument if you supply a third argument.");
+            return lambdaElse(ctx, binder, arguments);
 
             // If yields false, and there is no "else lambda".
-            return null;
         });
 
         /// <summary>
@@ -382,11 +470,43 @@ namespace lizzie
             var arg1 = arguments.Get(0);
 
             // Comparing all other objects to the first.
+
+            /*
+              replaces the code here , because I noticed some types in c# are better
+              compared when converted to string or byte[], and for the purpose for 
+              which I am using Lizzie this form showed more consistent.
+            */
+
             foreach (var ix in arguments.Skip(1)) {
-                if (arg1 == null && ix != null || arg1 != null && ix == null)
-                    return null;
-                if (arg1 != null && !arg1.Equals(ix))
-                    return null;
+
+                switch (arg1)
+                {
+                    case double _:
+                        if (ix == null)
+                            return false;
+                        if (!arg1.ToString().Equals(ix.ToString()))
+                            return false;
+                        break;
+                    case int _:
+                        if (ix == null)
+                            return false;
+                        if (!arg1.ToString().Equals(ix.ToString()))
+                            return false;
+                        break;
+                    case float _:
+                        if (ix == null)
+                            return false;
+                        if (!arg1.ToString().Equals(ix.ToString()))
+                            return false;
+                        break;
+
+                        default:
+                            if (arg1 == null && ix != null || arg1 != null && ix == null)
+                                return false;
+                            if (arg1 != null && !arg1.Equals(ix))
+                                return false;
+                        break;
+                }
             }
 
             // Equality!
@@ -407,11 +527,9 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'more than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
-            if (arg1 > arg2)
-                return arg1;
+            return arg1 > arg2;
 
             // Failed!
-            return null;
         });
 
         /// <summary>
@@ -428,11 +546,8 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'less than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
-            if (arg1 < arg2)
-                return arg1;
 
-            // Failed!
-            return null;
+            return (arg1 < arg2);
         });
 
         /// <summary>
@@ -450,11 +565,8 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'more than equals' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
-            if (arg1 >= arg2)
-                return arg1;
-
             // Failed!
-            return null;
+            return (arg1 >= arg2);
         });
 
         /// <summary>
@@ -471,12 +583,8 @@ namespace lizzie
             if (arguments.Count != 2)
                 throw new LizzieRuntimeException("The 'less than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
-            dynamic arg2 = arguments.Get(1);
-            if (arg1 <= arg2)
-                return arg1;
-
-            // Failed!
-            return null;
+            dynamic arg2 = arguments.Get(1);// Failed!
+            return (arg1 <= arg2);
         });
 
         /// <summary>
@@ -601,13 +709,20 @@ namespace lizzie
         {
             if (arguments.Count != 1)
                 throw new LizzieRuntimeException("The 'count' function must be given exactly 1 argument, and that argument must be a list or a map.");
-            if (arguments.Get(0) is List<object> list) {
-                return list.Count;
-            } else if (arguments.Get(0) is Dictionary<string, object> map) {
-                return map.Count;
-            } else {
-                throw new LizzieRuntimeException("The 'count' function can only handle a 'list' or a 'map'.");
-            }
+
+
+            /*
+               replaces the code below because it wasn't being consistent...
+               with generic List <T> and Dictionary <Tkey, TValue>
+           */
+
+            var list = arguments.Get(0);
+            var props = TypeDescriptor.GetProperties(list);
+            if (props["Count"] is null)
+                return 0;
+            var count = props["Count"].GetValue(list);
+            return count;
+          
         });
 
         /// <summary>
@@ -1044,7 +1159,6 @@ namespace lizzie
             // Sanity checking.
             if (arguments.Count != 3)
                 throw new LizzieRuntimeException("The 'replace' function must be given exactly 3 arguments.");
-
             // Retrieving string's length.
             var arg1 = arguments.Get<string>(0);
             var arg2 = arguments.Get<string>(1);
@@ -1066,7 +1180,6 @@ namespace lizzie
             // Sanity checking.
             if (arguments.Count != 1)
                 throw new LizzieRuntimeException("The 'eval' function must be given exactly 1 argument.");
-
             // Retrieving string's length.
             var arg1 = arguments.Get<string>(0);
             var lambda = LambdaCompiler.Compile<TContext>(ctx, arg1);
