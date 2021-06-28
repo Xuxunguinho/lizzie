@@ -106,6 +106,8 @@ namespace lizzie
             binder["not"] = Functions<TContext>.Not;
             binder["nao"] = Functions<TContext>.Not;
 
+            // Enumerable
+            
             // Boolean algebraic functions.
             binder["any"] = Functions<TContext>.Any;
             binder["qualquer"] = Functions<TContext>.Any;

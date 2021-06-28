@@ -14,7 +14,6 @@ using System.ComponentModel;
 using lizzie.exceptions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 namespace lizzie
 {
     /// <summary>
@@ -362,13 +361,19 @@ namespace lizzie
             if (arguments.Count < 2)
                 throw new LizzieRuntimeException("The 'if' keyword requires at least 2 arguments, and you tried to invoke it with fewer.");
 
+            if (arguments.Count > 3)
+                throw new LizzieRuntimeException("The 'if' keyword requires at max 3 arguments, and you tried to invoke it with fewer.");
+
+            if (!(arguments.Get(0) is bool condition))
+                throw new LizzieRuntimeException("The 'if' keyword requires a bool in First argument");
             // Retrieving condition, if(true) lambda, and sanity checking invocation.
-            var condition = arguments.Get(0);
-            if (condition != null)
+
+            if (condition)
             {
                 if (!(arguments.Get(1) is Function<TContext> lambdaIf))
                     throw new LizzieRuntimeException("The 'if' keyword requires a lambda argument as its second argument.");
-                return lambdaIf(ctx, binder, arguments);
+
+                return lambdaIf(ctx, binder, arguments); ;
             }
 
             // Execute the else-clause, if one is present:
@@ -1109,5 +1114,6 @@ namespace lizzie
             var lambda = LambdaCompiler.Compile<TContext>(ctx, arg1);
             return lambda();
         });
+      
     }
 }
