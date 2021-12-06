@@ -11,6 +11,7 @@ using System.Text;
 using System.Globalization;
 using System.Collections.Generic;
 using System.ComponentModel;
+using Lex;
 using lizzie.exceptions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -430,9 +431,25 @@ namespace lizzie
         {
             if (arguments.Count < 2)
                 throw new LizzieRuntimeException("The 'eq' function must be given at least 2 arguments.");
-            var arg1 = arguments.Get(0);
+            var arg11 = arguments.Get(0);
 
-            // Comparing all other objects to the first.
+            
+            
+            var arg1  = arg11 is string[] strings
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings)
+                : arg11;
+
+
+            var newArgs = new List<object>();
+            
+            foreach (var x in arguments.Skip(1))
+            {
+                var value = x is string[] strings1
+                    ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings1)
+                    : x;
+                newArgs.Add(value);
+            }
+           // Comparing all other objects to the first.
 
             /*
               replaces the code here , because I noticed some types in c# are better
@@ -440,7 +457,7 @@ namespace lizzie
               which I am using Lizzie this form showed more consistent.
             */
 
-            foreach (var ix in arguments.Skip(1))
+            foreach (var ix in newArgs)
             {
                 switch (arg1)
                 {
@@ -486,7 +503,16 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'more than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
-            return arg1 > arg2;
+            
+            
+            var value1 = arg1 is string[] strings
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings)
+                : arg1;
+            var value2 = arg2 is string[] strings1
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings1)
+                : arg2;
+
+            return value1 > value2;
 
             // Failed!
         });
@@ -499,15 +525,22 @@ namespace lizzie
         /// that has overloaded the less than operator.
         /// </summary>
         /// <value>The function wrapping the 'lt keyword'.</value>
-        public static Function<TContext> Lt => new Function<TContext>((ctx, binder, arguments) =>
+        public static Function<TContext> Lt => (ctx, binder, arguments) =>
         {
             if (arguments.Count != 2)
                 throw new LizzieRuntimeException("The 'less than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
 
-            return (arg1 < arg2);
-        });
+            var value1 = arg1 is string[]
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue((string[]) arg1)
+                : arg1;
+            var value2 = arg2 is string[]
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue((string[]) arg2)
+                : arg2;
+
+            return value1 < value2;
+        };
 
         /// <summary>
         /// Creates a more than equals function, that checks if one object is more
@@ -524,8 +557,15 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'more than equals' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1);
-            // Failed!
-            return (arg1 >= arg2);
+          
+            var value1 = arg1 is string[] strings
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings)
+                : arg1;
+            var value2 = arg2 is string[] strings1
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings1)
+                : arg2;
+
+            return value1 >= value2;
         });
 
         /// <summary>
@@ -543,7 +583,17 @@ namespace lizzie
                 throw new LizzieRuntimeException("The 'less than' function must be given exactly 2 arguments.");
             dynamic arg1 = arguments.Get(0);
             dynamic arg2 = arguments.Get(1); // Failed!
-            return (arg1 <= arg2);
+          
+            var value1 = arg1 is string[] strings
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings)
+                : arg1;
+            var value2 = arg2 is string[] strings1
+                ? ((object)(binder["$ctxI"] as dynamic)).GetDynRuntimeValue(strings1)
+                : arg2;
+
+            return value1 <= value2;
+            
+           
         });
 
         /// <summary>

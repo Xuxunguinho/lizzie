@@ -141,12 +141,16 @@ namespace lizzie
                     break; // Even if we're not at EOF, we might be at '}', ending the current body.
             }
 
-            // Sanity checking tokenizer's content, before returning functions to caller.
-            if (forceClose && en.Current != "}")
-                throw new LizzieParsingException("Premature EOF while parsing code, missing an '}' character.");
-            if (!forceClose && !eof && en.Current == "}")
-                throw new LizzieParsingException("Unexpected closing brace '}' in code, did you add one too many '}' characters?");
-            return new Tuple<List<Function<TContext>>, bool>(content, eof);
+            switch (forceClose)
+            {
+                // Sanity checking tokenizer's content, before returning functions to caller.
+                case true when en.Current != "}":
+                    throw new LizzieParsingException("Premature EOF while parsing code, missing an '}' character.");
+                case false when !eof && en.Current == "}":
+                    throw new LizzieParsingException("Unexpected closing brace '}' in code, did you add one too many '}' characters?");
+                default:
+                    return new Tuple<List<Function<TContext>>, bool>(content, eof);
+            }
         }
 
         /*
@@ -165,13 +169,9 @@ namespace lizzie
                 case "'":
                     return CompileString<TContext>(en);
                 default:
-                    if (IsNumeric(en.Current))
-                        return CompileNumber<TContext>(en);
-                    else
-                        return CompileSymbol<TContext>(en);
+                    return IsNumeric(en.Current) ? CompileNumber<TContext>(en) : CompileSymbol<TContext>(en);
             }
         }
-
         /*
          * Compiles a lambda down to a function and returns the function to caller.
          */
@@ -185,7 +185,7 @@ namespace lizzie
              * Creating a function that evaluates every function sequentially, and
              * returns the result of the last function evaluation to the caller.
              */
-            Function<TContext> function = new Function<TContext>((ctx, binder, arguments) => {
+            var function = new Function<TContext>((ctx, binder, arguments) => {
                 object result = null;
                 foreach (var ix in functions) {
                     result = ix(ctx, binder, null);
@@ -201,9 +201,7 @@ namespace lizzie
              * Lizzie, and does not require the '@' character to accomplish "lazy
              * evaluation".
              */
-            var lazyFunction = new Function<TContext>((ctx2, binder2, arguments2) => {
-                return function;
-            });
+            var lazyFunction = new Function<TContext>((ctx2, binder2, arguments2) => function);
             return new Tuple<Function<TContext>, bool>(lazyFunction, tuples.Item2 || !en.MoveNext());
         }
 
@@ -238,9 +236,7 @@ namespace lizzie
                  */
                 var tuple = ApplyArguments<TContext>(symbolName, en);
                 var functor = tuple.Item1;
-                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => {
-                    return functor;
-                }), tuple.Item2);
+                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => functor), tuple.Item2);
 
             } else {
 
@@ -249,9 +245,7 @@ namespace lizzie
                  * When you use the '@' character with a symbol, this implies simply returning the
                  * symbol's name.
                  */
-                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => {
-                    return symbolName;
-                }), eof);
+                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => symbolName), eof);
             }
         }
 
@@ -272,9 +266,7 @@ namespace lizzie
             en.MoveNext();
 
             // Returning a function that evaluates to the actual string's constant value.
-            var function = new Function<TContext>((ctx, binder, arguments) => {
-                return stringConstant;
-            });
+            var function = new Function<TContext>((ctx, binder, arguments) => stringConstant);
             return new Tuple<Function<TContext>, bool>(function, !en.MoveNext());
         }
 
@@ -287,7 +279,7 @@ namespace lizzie
             object numericConstant = null;
 
             // Checking if this is a floating point value.
-            if (en.Current.IndexOfAny(new[] { '.', 'e', 'E' }) != -1) {
+            if (en.Current != null && en.Current.IndexOfAny(new[] { '.', 'e', 'E' }) != -1) {
 
                 // Notice, all floating point numbers are treated as double.
                 var success = double.TryParse(en.Current, NumberStyles.Any, CultureInfo.InvariantCulture, out double dblResult);
@@ -305,9 +297,7 @@ namespace lizzie
             }
 
             // Creates a function that evaluates to the actual constant number.
-            var function = new Function<TContext>((ctx, binder, arguments) => {
-                return numericConstant;
-            });
+            var function = new Function<TContext>((ctx, binder, arguments) => numericConstant);
             return new Tuple<Function<TContext>, bool>(function, !en.MoveNext());
         }
 
@@ -333,11 +323,7 @@ namespace lizzie
             } else {
 
                 // Referencing value of symbol.
-                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => {
-
-                    return binder[symbolName];
-
-                }), eof);
+                return new Tuple<Function<TContext>, bool>(new Function<TContext>((ctx, binder, arguments) => binder[symbolName]), eof);
             }
         }
 

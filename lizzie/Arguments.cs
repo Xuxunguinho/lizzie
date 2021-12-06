@@ -26,6 +26,14 @@ namespace lizzie
         { }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="index"></param>
+        public object this[int index] =>  _list[index];
+           
+       
+
+/// <summary>
         /// Initializes the instance with the specified initial arguments.
         /// </summary>
         /// <param name="arguments">Arguments to initialize instance with.</param>

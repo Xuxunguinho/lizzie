@@ -26,12 +26,23 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="exceptions\" />
-    <Folder Include="extensions\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CSharp" version="4.5.0" Version="4.5.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Lex\Lex\Lex.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="extensions\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Remove="extensions\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="extensions\**" />
   </ItemGroup>
 </Project>
